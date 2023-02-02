@@ -1,0 +1,150 @@
+---
+# Elasticsearch & rollover settings; . prefixed indices are excluded from all
+# actions, so .kibana, .tasks, etc are not touched.
+elasticsearch:
+  host: https://es-example-api.example.com
+  auth:
+    username: squiggler
+    password: supersecret
+
+  # Rollover information does not need to be specified, these are the defaults,
+  # they are available for overriding if need be. Rollover info also provides
+  # information on how aliases for creating patterns is determined.
+  rollover:
+    max_age: 30d
+    target_shard_size: 10gb
+    date_math_pattern: '<{index}-{{now/d}}-000001>'
+
+    # You shouldn't need to mess with these, but in case you do: date_math_regex
+    # is how Squiggler identifies rollover patterns, and date_indexed_pattern is
+    # how it identifies indices that have been indexer for monthly/daily indices.
+    #
+    # The date_math_regex_removal bit is how we remove the date math part from the
+    # index name, for use in the _get_rollover_aliases_pairs. We need it to compare
+    # if the alias name is an exact match with the index name, otherwise it is not
+    # rollable (or doesn't appear to be).
+    date_math_regex: '.*\-\d{4}\.\d{2}\.\d{2}\-\d{6}$'
+    date_math_regex_removal: '\-\d{4}\.\d{2}\.\d{2}\-\d{6}$'
+    date_indexed_regex: '.*\-\d{4}(?:\.\d{2}){1,}$'
+
+    # If using ILM to manage rollover (Squiggler just does the kibana hookup),
+    # then this should be enabled. This tells Squiggler to use the _aliases API
+    # to look up aliases for is_write_index=true which is quicker than the old
+    # fashioned way via curator & index stats.
+    ilm_rollover_enabled: true
+
+    # Use data streams over ILM or older RO methods. Supercedes ILM settings entirely.
+    # Once enabled, will call to the data stream API to determine which patterns/aliases
+    # are relevant.
+    #
+    # NOTE: This will break other actions that use the ILM method for obtaining alias pairs.
+    # Such as creating aliases (aside from data streams), rolling them, fixing them, etc. 
+    # Ideally if using this option, only use them with clusters that are fully managed with ILM
+    # and data streams already, using Squiggler only to create remote patterns or recreate them.
+    data_streams_enabled: true
+
+# Local cluster Kibana settings, pattern generation naturally
+# excludes . prefixed indices.
+local_kibana:
+  host: https://es-example.example.com
+  auth:
+    username: squiggler
+    password: supersecret
+
+# CCS Kibana cluster, for cluster:pattern-* creation, if you use any remote_kibana_*
+# actions, you will need the elasticsearch information setup so it can lookup info.
+remote_kibana:
+  host: https://es-ccs.example.com
+  auth:
+    username: squiggler
+    password: supersecret
+
+  # If you have many clusters that will contain a common prefix, use this to inject
+  # remove patterns with the common prefix (generally followed by an asterisk) to
+  # setup an index pattern for all the clusters.
+  # For example:
+  #  - cluster-1
+  #  - cluster-2
+  #  - cluster-3
+  # It would be appropriate to use "cluster*" here, so index patterns would be injected
+  # with cluster*:my-index-pattern-* for example.
+  #
+  # Prefix is ONLY valid for the remote cluster, as the remote cluster is generally a CCS
+  # instance.
+  prefix: "sharded-cluster*"
+
+  # Probing tries the 5.x API call first, then the 6.x call second. Whichever
+  # succeeds is what version it will use for interaction. By default probing is
+  # off and defaults to using Kibana 6.x methods.
+  probing: false
+  version: 6
+
+# Which actions to perform, toggling these actions makes it
+# possible for you to setup Squiggler to only perform part of
+# the routine.
+#
+# All actions are disabled by default, selectively enable the
+# ones you require. Actions that are not specified are disabled
+# by default.
+actions:
+
+  # Create (reindex & delete) indices / perform rollover requests
+  create_rollover_indices:
+    enabled: true
+    only_if_status: green # will only proceed if status is green (or better)
+    exclude_method: prefix # prefix/suffix/regex, no effect if not enabled
+    exclude_patterns:
+      - something-
+      - restored-
+
+  # Update rollover-able aliases
+  update_rollover_aliases:
+    enabled: true
+    only_if_status: yellow
+
+  # Fix ILM aliases/indices; looks at aliases, adds the rollover alias setting
+  # required for hot phase rollover action to work with ILM, otherwise Logstash
+  # made indices with ILM don't work, also retries ILM steps on indices that
+  # need this set
+  fix_ilm_indices:
+    enabled: true
+    only_if_status: yellow
+
+  # Create patterns, creating patterns requires a lookup on the cluster
+  # and in the remote/local Kibana itself to confirm it has the pattern(s)
+  create_local_kibana_patterns:
+    enabled: false
+  create_remote_kibana_patterns:
+    enabled: false
+    exclude_method: regex
+    exclude_patterns:
+      - .*\-(something|restored)\-.*
+
+  # Create aliases for datastreams with the appropriate template.
+  # The "name" parameter is required within the template, do not
+  # create a template simply named "{name}".
+  create_datastream_aliases:
+    template: "{name}-"
+    enabled: true
+    only_if_status: "yellow"
+
+  # Recreate missing patterns from the cluster itself. This will only
+  # recreate rollover aliases from the cluster. Generally not something
+  # you will run on a schedule, just manually if something was borked.
+  recreate_local_kibana_patterns:
+    enabled: false
+  recreate_remote_kibana_patterns:
+    enabled: false
+    template: "{cluster}:{index}-*"
+
+# Metric outputs, notifiers, etc. Only those specified are used.
+outputs:
+
+  # Will use the message template to post to the webhook the newly generated
+  # patterns.
+  slack:
+    webhook: https://slack-url-webhook-thing-here.com/.../
+    message: '{emoji} New pattern(s) made: {patterns}'
+    emojis: '🚀,😄,💪,🙏,🙌,🙈,😂,😎,😱,😈'
+    notify_on_local: false
+    notify_on_remote: true

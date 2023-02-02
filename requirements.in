@@ -1,0 +1,6 @@
+requests
+structlog
+elasticsearch
+gevent
+ruamel.yaml
+cerberus
