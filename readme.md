@@ -39,6 +39,10 @@ Rollover indices are greatly useful for controlling the number of shards and the
 
 This is not acceptable for production data where you need everything. Therefore, for production type use, it will be preferable to use timestamped indices based on the month/day/hour, potentially reindexing as a job every so often if you want to control the number of indices instead.
 
+---
+
+The above guidance is no longer an issue with the advent of some modifications to the Logstash output to establish ILM indices directly. As well as the introduction of data streams. Squiggler can still be used to create and dump index patterns with Kibana with these advances.
+
 ## Usage
 
 ```
