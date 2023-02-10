@@ -4,7 +4,7 @@ Squiggler is our solution for the automation of creation and migration of indice
 
 ## Warning
 
-This project was originally for ES 6/7.x, and as such has some odd decisions as new features came and go within ES and Kibana. Some things are bolted on, and large portions of this project are no longer used. It has its issues, but for a time it worked great, still more or less does.
+This project was originally for ES 6/7.x, and as such has some odd decisions as new features came and went within ES and Kibana. Some things are bolted on, and large portions of this project are no longer used. It has its issues, but for a time it worked great, still more or less does.
 
 ## Process
 
