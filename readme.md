@@ -41,7 +41,7 @@ This is not acceptable for production data where you need everything. Therefore,
 
 ---
 
-The above guidance is no longer an issue with the advent of some modifications to the Logstash output to establish ILM indices directly. As well as the introduction of data streams. Squiggler can still be used to create and dump index patterns with Kibana with these advances.
+The above guidance is no longer an issue with the advent of some modifications to the Logstash output to establish ILM indices directly. As well as the introduction of data streams. Squiggler can still be used to create and dump index patterns with Kibana with these advances. You can see the example changes [here](https://github.com/Battleroid/logstash-output-elasticsearch/tree/ilm_substitution_10.8.6) in the ES output for logstash. Effectively this coupled with key actions within Squiggler allow ILM indices to spawn without the need to do a reindex and relink. Squiggler would more or less need to "fix" the indices depending on the settings you use in the output.
 
 ## Usage
 
